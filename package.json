@@ -1,0 +1,21 @@
+{
+  "name": "playwright-artillery-js",
+  "version": "1.0.0",
+  "description": "Playwright JS framework (POM) for OrangeHRM demo, with .claude skills/rules-driven test authoring and native HTML reporting.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:auth-setup": "playwright test --project=setup",
+    "report": "playwright show-report",
+    "coverage": "node scripts/update-coverage.js",
+    "codegen": "playwright codegen https://opensource-demo.orangehrmlive.com/"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
