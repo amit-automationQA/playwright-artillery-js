@@ -3,7 +3,8 @@
  * Recalculates coverage across all test-cases/<module>/<page>.md files:
  *  - Rewrites each "Section coverage" line under every "### Section:" heading.
  *  - Rewrites each page's "## Page Summary" table.
- *  - Rewrites the master test-coverage.md rollup across all modules.
+ *  - Rewrites the master test-coverage.md rollup across all modules and its
+ *    synchronized copy in test-requirements/test-coverage.md.
  *
  * Skills must only add/flip rows in test-cases/**\/*.md — this script does all arithmetic.
  * Status values: Automated, Not Automated, Blocked, Skipped.
@@ -21,6 +22,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const TEST_CASES_DIR = path.join(ROOT, 'test-cases');
 const MASTER_FILE = path.join(ROOT, 'test-coverage.md');
+const REQUIREMENTS_COVERAGE_FILE = path.join(
+  ROOT,
+  'test-requirements',
+  'test-coverage.md'
+);
 
 const STATUS = {
   AUTOMATED: 'Automated',
@@ -172,6 +178,7 @@ ${overallRow}
 `;
 
   fs.writeFileSync(MASTER_FILE, masterContent, 'utf-8');
+  fs.writeFileSync(REQUIREMENTS_COVERAGE_FILE, masterContent, 'utf-8');
 
   console.log('Coverage updated:');
   for (const m of moduleTotals) {

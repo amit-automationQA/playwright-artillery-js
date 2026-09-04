@@ -1,75 +1,111 @@
-# playwright-artillery-js
+# Playwright Automation Framework
 
-Playwright JS test framework for **OrangeHRM Demo** (`https://opensource-demo.orangehrmlive.com/`), built around:
+End-to-end UI test framework for the OrangeHRM demo application, built with Playwright and JavaScript. It uses page objects, reusable fixtures, authenticated storage state, coverage tracking, and GitHub Actions.
 
-- **Page Object Model** (`src/pages/`)
-- **Storage-state based login** (log in once, reuse the session everywhere)
-- **Native Playwright HTML report only** — no other reporters
-- **`.claude/skills` + `.claude/rules`** — the agent creates new tests from a `module.md` file the test automation engineer provides, then reviews its own code against the rules
-- **Per-page + master markdown coverage tracking**, recalculated by a deterministic Node script (never hand-computed)
-- **GitHub Actions** pipeline that runs the suite and uploads the native HTML report as a build artifact
+## What it includes
 
-> Note: Artillery-based load testing is intentionally out of scope for this iteration.
+- Page Object Model under `src/pages/`
+- Reusable page-object fixtures under `src/fixtures/`
+- One-time admin login setup with Playwright storage state
+- Native Playwright HTML reports, including screenshots, video, and traces for failures
+- Requirement-to-test coverage tracking in Markdown
+- GitHub Actions workflow for tests on pushes, pull requests, and manual runs
+- Project-local `.claude` skills and rules for consistent test authoring
 
-## Getting started
+## Local setup
 
-```bash
+```powershell
 npm install
-npx playwright install
-cp .env.example .env   # fill in TEST_ADMIN_USER / TEST_ADMIN_PASS
+npx playwright install chromium
+Copy-Item .env.example .env
 ```
 
-Default demo credentials: `admin` / `admin123`.
+Add your local credentials to `.env`:
 
-## Running tests
-
-```bash
-npm test                 # headless run, generates auth/admin.json via the setup project automatically
-npm run test:headed      # headed run
-npm run test:ui          # Playwright UI mode
-npm run report           # open the last native HTML report
-npm run coverage         # recalculate test-cases/**/*.md and test-coverage.md
+```env
+BASE_URL=https://opensource-demo.orangehrmlive.com
+TEST_ADMIN_USER=your-user
+TEST_ADMIN_PASS=your-password
 ```
 
-The `setup` project (`tests-setup/auth.setup.js`) always runs first (via `dependencies: ['setup']` in `playwright.config.js`) and logs in fresh — storage state is never cached across CI runs.
+`.env` is ignored by Git. The Playwright configuration loads it automatically with `dotenv`.
+
+## Run tests
+
+```powershell
+npm test                 # complete headless suite
+npm run test:headed      # visible browser
+npm run test:ui          # Playwright UI Mode
+npm run test:auth-setup  # refresh only the admin storage state
+npm run report           # open the latest local HTML report
+npm run coverage         # regenerate all coverage rollups
+```
+
+The `setup` project authenticates once and writes `auth/admin.json`. Authenticated specs reuse that state; login-flow tests explicitly use an empty state instead.
+
+## Test execution flow
+
+```mermaid
+flowchart TD
+    A["Run tests<br/>npm test locally<br/>or GitHub Actions"] --> B["Load configuration"]
+    B --> C["Read credentials<br/>.env locally / GitHub Secrets in CI"]
+    C --> D["Login setup runs once"]
+    D --> E["Run all test files"]
+
+    E --> F{"Test passed?"}
+    F -->|Yes| G["Mark as passed"]
+    F -->|No| H{"Already retried?"}
+
+    H -->|No| I["Retry failed test once"]
+    I --> F
+    H -->|Yes| J["Mark as failed<br/>capture screenshot, video, trace"]
+
+    G --> K["Create HTML report"]
+    J --> K
+    K --> L["Local: npm run report<br/>CI: download artifact"]
+```
+
+A test that passes on its retry is marked as **flaky** in the Playwright report.
+
+## Coverage workflow
+
+1. Add test requirements to `test-requirements/<module>.md`.
+2. Implement matching page objects and specs.
+3. Set the implemented test case to `Automated` in `test-cases/<module>/<page>.md`.
+4. Run `npm run coverage`.
+
+The coverage script regenerates these two identical master rollups:
+
+- `test-coverage.md`
+- `test-requirements/test-coverage.md`
+
+Do not edit calculated coverage totals manually.
+
+## GitHub Actions and secrets
+
+The workflow at `.github/workflows/playwright.yml` runs on pushes and pull requests to `main`, and can also be started manually from the GitHub **Actions** tab.
+
+Add these repository secrets in **Settings → Secrets and variables → Actions**:
+
+- `TEST_ADMIN_USER`
+- `TEST_ADMIN_PASS`
+
+Optionally add the repository variable `BASE_URL` for a different target environment. The workflow uploads the Playwright HTML report as an artifact after every non-cancelled run. Download and extract it, then open `index.html` to view the interactive report.
 
 ## Project layout
 
-```
-.claude/
-  skills/
-    create-new-tests/SKILL.md   # agent workflow: module.md -> page objects + specs + coverage update
-    code-review/SKILL.md        # agent workflow: review generated code against rules
-  rules/                        # the actual standards both skills enforce
-.mcp.json                       # Playwright MCP server (dev-time exploration only, not used in CI)
-src/
-  pages/                        # Page Object Model classes
-  fixtures/base.fixture.js      # auto-injects page objects into tests
-tests-setup/
-  auth.setup.js                 # logs in once, saves auth/admin.json
-tests/
-  auth/login.spec.js            # unauthenticated (exempt from storage state)
-  dashboard/dashboard.spec.js
-  pim/pim.spec.js
-test-requirements/              # INPUT: module.md files from the test automation engineer
-test-cases/                     # GENERATED: per-page coverage tracking (module/page/section)
-test-coverage.md                # GENERATED: master rollup across all modules
-scripts/update-coverage.js      # recalculates all coverage numbers — run after editing test-cases
-.github/workflows/playwright.yml
+```text
+.github/workflows/playwright.yml  GitHub Actions workflow
+.claude/                          Test-authoring skills and framework rules
+src/pages/                        Page objects
+src/fixtures/                     Shared Playwright fixtures
+tests-setup/                      Authentication setup project
+tests/                            Playwright specifications
+test-requirements/                Test requirements and a generated coverage copy
+test-cases/                       Per-page coverage tracking
+scripts/update-coverage.js        Coverage generator
 ```
 
-## The engineer's workflow
+## Future scope: Artillery
 
-1. Drop or update a file at `test-requirements/<module>.md` listing pages, sections, and test cases in plain language.
-2. Tell the agent: *"Automate the tests in `test-requirements/pim.md`."*
-3. The agent runs the **`create-new-tests`** skill: explores the real app via Playwright MCP, writes/updates page objects and specs following the rules, updates `test-cases/pim/*.md`, and regenerates `test-coverage.md`.
-4. The agent runs the **`code-review`** skill to check its own output against every rule file before reporting back.
-5. You get a summary: tests added, new page/module/overall coverage %.
-
-## Current coverage snapshot
-
-See [`test-coverage.md`](./test-coverage.md) for the live rollup. As scaffolded: Auth 100%, Dashboard 100%, PIM 50% (search test cases intentionally left `Not Automated` to demonstrate partial coverage reporting).
-
-## CI
-
-`.github/workflows/playwright.yml` runs on push/PR to `main` and on manual dispatch: installs deps + Chromium, runs the full suite, and uploads `playwright-report/` and the coverage markdown as build artifacts regardless of pass/fail. Add `TEST_ADMIN_USER` / `TEST_ADMIN_PASS` as repository secrets before running.
+This repository is prepared to evolve into a combined functional and performance-testing framework. Artillery load-test scenarios, configuration, scripts, CI jobs, and result publishing are intentionally not implemented yet. When that scope begins, Artillery should be integrated as a separate test layer so its load profiles and reports do not change the Playwright functional-test workflow.

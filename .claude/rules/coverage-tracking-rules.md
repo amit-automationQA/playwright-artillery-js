@@ -2,8 +2,9 @@
 
 ## File layout
 - `test-requirements/<module>.md` — INPUT ONLY. Provided by the test automation engineer. Never edit or overwrite this file; it is the source of truth for what should be tested.
+- `test-requirements/test-coverage.md` — GENERATED copy of the master coverage rollup. Never edit it manually.
 - `test-cases/<module>/<page>.md` — GENERATED/MAINTAINED tracking file, one per page, grouped by section, with a running Status per test case.
-- `test-coverage.md` — GENERATED master rollup across all modules. Fully rebuilt by `scripts/update-coverage.js`. Never hand-edit the numbers in this file.
+- `test-coverage.md` — GENERATED master rollup across all modules. Fully rebuilt by `scripts/update-coverage.js`; the same content is mirrored to `test-requirements/test-coverage.md`. Never hand-edit either file.
 
 ## test-cases/<module>/<page>.md schema
 

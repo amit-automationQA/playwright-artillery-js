@@ -14,7 +14,8 @@ export default defineConfig({
   },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // Retry a failed test once in both local and CI runs.
+  retries: 1,
   workers: process.env.CI ? 2 : 2,
 
   // Native Playwright HTML reporter ONLY. Do not add list/json/junit/dot etc.
