@@ -92,6 +92,12 @@ Add these repository secrets in **Settings → Secrets and variables → Actions
 
 Optionally add the repository variable `BASE_URL` for a different target environment. The workflow uploads the Playwright HTML report as an artifact after every non-cancelled run. Download and extract it, then open `index.html` to view the interactive report.
 
+### AI test automation workflow
+
+`.github/workflows/automate-test-case.yml` is a manual workflow template for automating one requirement at a time. After adding the `ANTHROPIC_API_KEY` repository secret, run **Automate Test Case** from the GitHub **Actions** tab and enter a test ID such as `TC-PIM-EMPLIST-004`.
+
+The workflow validates the ID in `test-requirements/`, creates `feature/<test-case-id>` from `main`, instructs Claude Code to follow the project `create-new-tests` skill, runs the targeted test, commits the generated allowed files, and opens a pull request to `main`. It needs `TEST_ADMIN_USER` and `TEST_ADMIN_PASS` secrets as well.
+
 ## Project layout
 
 ```text

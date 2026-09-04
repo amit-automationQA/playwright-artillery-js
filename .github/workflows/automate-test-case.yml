@@ -1,0 +1,129 @@
+name: Automate Test Case
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_case_id:
+        description: Test case ID from test-requirements (for example, TC-PIM-EMPLIST-004)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: automate-test-case-${{ inputs.test_case_id }}
+  cancel-in-progress: false
+
+jobs:
+  automate:
+    name: Automate ${{ inputs.test_case_id }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      TEST_CASE_ID: ${{ inputs.test_case_id }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Validate requested test case
+        shell: bash
+        run: |
+          if [[ ! "$TEST_CASE_ID" =~ ^TC-[A-Z0-9-]+$ ]]; then
+            echo "test_case_id must use the format TC-MODULE-PAGE-001."
+            exit 1
+          fi
+
+          if ! rg --fixed-strings --quiet "$TEST_CASE_ID" test-requirements; then
+            echo "Test case '$TEST_CASE_ID' was not found in test-requirements/."
+            exit 1
+          fi
+
+      - name: Create feature branch
+        id: branch
+        shell: bash
+        run: |
+          branch="feature/$TEST_CASE_ID"
+          if git ls-remote --exit-code --heads origin "$branch"; then
+            echo "Branch '$branch' already exists. Choose a different test case or close the existing work first."
+            exit 1
+          fi
+          git switch --create "$branch"
+          echo "name=$branch" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies and Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Create fresh authenticated storage state
+        env:
+          TEST_ADMIN_USER: ${{ secrets.TEST_ADMIN_USER }}
+          TEST_ADMIN_PASS: ${{ secrets.TEST_ADMIN_PASS }}
+        run: npx playwright test --project=setup
+
+      - name: Implement requested test with Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Implement only ${{ inputs.test_case_id }} in this repository.
+
+            You must first read and follow .claude/skills/create-new-tests/SKILL.md.
+            Use test-requirements/ as the source of truth and do not modify it.
+            Follow every file in .claude/rules/. Use the existing authenticated
+            storage state in auth/admin.json when exploring authenticated pages.
+
+            Add or update only the page objects, fixtures, test spec, and coverage
+            tracking required for this test case. Run the targeted test with:
+            npx playwright test --grep "${{ inputs.test_case_id }}"
+            Then run: npm run coverage
+
+            Do not commit, push, create a pull request, modify workflow files, or
+            expose credentials. Leave the completed working-tree changes for the
+            following workflow steps.
+          claude_args: |
+            --max-turns 50
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(git:*),Bash(npm:*),Bash(npx:*),Bash(node:*)"
+
+      - name: Verify the generated test
+        env:
+          TEST_ADMIN_USER: ${{ secrets.TEST_ADMIN_USER }}
+          TEST_ADMIN_PASS: ${{ secrets.TEST_ADMIN_PASS }}
+        run: npx playwright test --grep "$TEST_CASE_ID"
+
+      - name: Commit and push implementation
+        shell: bash
+        run: |
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "The agent did not produce any changes."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src tests test-cases test-coverage.md test-requirements/test-coverage.md
+          git diff --cached --quiet && { echo "No allowed files were changed."; exit 1; }
+          git commit -m "test: automate $TEST_CASE_ID"
+          git push --set-upstream origin "${{ steps.branch.outputs.name }}"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.branch.outputs.name }}" \
+            --title "test: automate $TEST_CASE_ID" \
+            --body "Automated $TEST_CASE_ID using the GitHub Actions Claude Code workflow. The targeted Playwright test passed in the workflow."
