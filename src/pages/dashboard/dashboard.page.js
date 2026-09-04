@@ -16,12 +16,15 @@ export class DashboardPage extends BasePage {
   }
 
   async goto() {
-  await super.goto('/web/index.php/dashboard/index', { requireAuth: true });
-}
+    await super.goto('/web/index.php/dashboard/index', { requireAuth: true });
+  }
 
   async logout() {
     await this.userDropdown.click();
-    await this.logoutMenuItem.click();
+    await Promise.all([
+      this.page.waitForURL(/auth\/login/),
+      this.logoutMenuItem.click(),
+    ]);
   }
 
   async openMenuItem(name) {

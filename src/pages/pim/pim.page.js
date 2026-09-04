@@ -23,19 +23,23 @@ export class PimPage extends BasePage {
   }
 
   async goto() {
-  await super.goto('/web/index.php/pim/viewEmployeeList', { requireAuth: true });
-}
+    await super.goto('/web/index.php/pim/viewEmployeeList', { requireAuth: true });
+  }
 
   async clickAdd() {
     await this.addButton.click();
     await this.page.waitForURL(/pim\/addEmployee/);
   }
 
-  async addEmployee(firstName, lastName) {
+  async addEmployee(firstName, lastName, employeeId) {
     await this.clickAdd();
     await this.firstNameInput.fill(firstName);
     await this.lastNameInput.fill(lastName);
-    await this.saveButton.click();
+    await this.employeeIdInput.fill(employeeId);
+    await Promise.all([
+      this.page.waitForURL(/viewPersonalDetails/, { waitUntil: 'commit' }),
+      this.saveButton.click(),
+    ]);
   }
 
   async searchByName(name) {

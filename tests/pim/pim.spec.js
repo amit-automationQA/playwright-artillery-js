@@ -21,7 +21,8 @@ test.describe('Module: PIM > Page: Employee List', () => {
     page,
   }) => {
     const uniqueLastName = `Tester${Date.now()}`;
-    await pimPage.addEmployee('Automation', uniqueLastName);
+    const uniqueEmployeeId = String(Date.now()).slice(-9);
+    await pimPage.addEmployee('Automation', uniqueLastName, uniqueEmployeeId);
     await expect(page).toHaveURL(/viewPersonalDetails/);
     await expect(page.getByText(`Automation ${uniqueLastName}`)).toBeVisible();
   });
