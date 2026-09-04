@@ -1,4 +1,5 @@
 import { test, expect } from '../../src/fixtures/base.fixture.js';
+import { randomInt } from 'node:crypto';
 
 /**
  * Uses default storageState (auth/admin.json) from playwright.config.js.
@@ -21,7 +22,7 @@ test.describe('Module: PIM > Page: Employee List', () => {
     page,
   }) => {
     const uniqueLastName = `Tester${Date.now()}`;
-    const uniqueEmployeeId = String(Date.now()).slice(-9);
+    const uniqueEmployeeId = String(randomInt(10_000_000, 100_000_000));
     await pimPage.addEmployee('Automation', uniqueLastName, uniqueEmployeeId);
     await expect(page).toHaveURL(/viewPersonalDetails/);
     await expect(page.getByText(`Automation ${uniqueLastName}`)).toBeVisible();

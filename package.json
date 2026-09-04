@@ -13,7 +13,8 @@
     "codegen": "playwright codegen https://opensource-demo.orangehrmlive.com/"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0"
+    "@playwright/test": "^1.48.0",
+    "dotenv": "^17.4.2"
   },
   "engines": {
     "node": ">=18"

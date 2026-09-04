@@ -19,7 +19,10 @@ export class PimPage extends BasePage {
     this.firstNameInput = page.getByPlaceholder('First Name');
     this.lastNameInput = page.getByPlaceholder('Last Name');
     this.saveButton = page.getByRole('button', { name: 'Save' });
-    this.employeeIdInput = page.locator('.oxd-input').nth(2);
+    this.employeeIdInput = page
+      .locator('.oxd-input-group')
+      .filter({ hasText: 'Employee Id' })
+      .getByRole('textbox');
   }
 
   async goto() {
