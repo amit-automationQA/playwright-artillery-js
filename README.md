@@ -139,26 +139,21 @@ README.md
 
 The Playwright suite runs against the OrangeHRM demo app and uses storage-state authentication to avoid repeated login steps in normal specs.
 
-```text
-Run Playwright tests
-  ↓
-Load config and environment
-  ↓
-Read credentials from .env or GitHub secrets
-  ↓
-Login setup runs once
-  ↓
-Run all functional specs
-  ↓
-Test passed?
-  ├─ No → Retry failed test once
-  │        ├─ Already retried? → Mark as failed
-  │        └─ No → Retry and continue
-  └─ Yes → Mark as passed
-  ↓
-Generate Playwright HTML report
-  ↓
-Upload report artifact
+```mermaid
+flowchart TD
+    A[Run Playwright tests] --> B[Load config and environment]
+    B --> C[Read credentials from .env or GitHub secrets]
+    C --> D[Setup runs once: admin login]
+    D --> E[Run functional specs]
+    E --> F{Test passed?}
+    F -->|No| G{Already retried?}
+    G -->|No| H[Retry failed test once]
+    H --> E
+    G -->|Yes| I[Mark as failed]
+    F -->|Yes| J[Mark as passed]
+    J --> K[Generate Playwright HTML report]
+    I --> K
+    K --> L[Upload report artifact]
 ```
 
 - The setup project in [tests-setup/auth.setup.js](tests-setup/auth.setup.js) logs in once as the admin user.
@@ -170,22 +165,18 @@ Upload report artifact
 
 Artillery is intentionally kept separate from the Playwright suite so browser load testing does not interfere with the functional automation lifecycle.
 
-```text
-Run Artillery profile
-  ↓
-Load the selected YAML config and phases
-  ↓
-Read target URL and environment values
-  ↓
-Execute browser-based scenario flow
-  ↓
-Capture latency, throughput, and status metrics
-  ↓
-Write JSON result file
-  ↓
-Generate HTML summary report
-  ↓
-Upload performance artifact
+```mermaid
+flowchart TD
+    A[Run Artillery profile] --> B[Load YAML config and named phase]
+    B --> C[Read target URL and env values]
+    C --> D[Execute browser-based scenario flow]
+    D --> E[Capture latency, throughput, and status metrics]
+    E --> F[Check ensure thresholds]
+    F -->|Pass| G[Write JSON result file]
+    F -->|Fail| H[Fail the run on threshold breach]
+    G --> I[Generate HTML summary report]
+    H --> I
+    I --> J[Upload performance artifact]
 ```
 
 - Quick smoke runs use a short validation profile for fast feedback.
