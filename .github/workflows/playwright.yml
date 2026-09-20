@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 0 * * 1,4'
   workflow_dispatch:
 
 permissions:
@@ -57,3 +59,17 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Email Playwright report
+        if: ${{ !cancelled() }}
+        uses: dawidd6/action-send-mail@v6
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: Playwright tests - ${{ job.status }}
+          to: ${{ secrets.REPORT_EMAIL_TO }}
+          from: ${{ secrets.MAIL_USERNAME }}
+          body: The Playwright test run finished with status ${{ job.status }}. The HTML report is attached.
+          attachments: playwright-report/index.html
