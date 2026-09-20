@@ -17,11 +17,11 @@
     "artillery:report:load": "node scripts/generate-artillery-report.js artillery-output/load-suite.json artillery-report/load-suite.html"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0",
-    "artillery": "^2.0.33",
-    "dotenv": "^17.4.2"
+    "@playwright/test": "^1.63.0",
+    "artillery": "^2.0.34",
+    "dotenv": "^18.0.1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.18.0"
   }
 }
