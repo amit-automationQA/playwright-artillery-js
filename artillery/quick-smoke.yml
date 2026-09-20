@@ -1,0 +1,14 @@
+config:
+  target: "https://opensource-demo.orangehrmlive.com"
+  phases:
+    - duration: 10
+      arrivalRate: 1
+      rampTo: 2
+  engines:
+    playwright: {}
+  processor: "./quick-smoke.js"
+
+scenarios:
+  - name: "Quick smoke: login + dashboard + PIM"
+    engine: playwright
+    testFunction: quickSmokeFlow

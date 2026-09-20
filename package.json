@@ -10,10 +10,15 @@
     "test:auth-setup": "playwright test --project=setup",
     "report": "playwright show-report",
     "coverage": "node scripts/update-coverage.js",
-    "codegen": "playwright codegen https://opensource-demo.orangehrmlive.com/"
+    "codegen": "playwright codegen https://opensource-demo.orangehrmlive.com/",
+    "artillery:load": "artillery run -o artillery-output/load-suite.json artillery/load-suite.yml",
+    "artillery:quick": "artillery run -o artillery-output/quick-smoke.json artillery/quick-smoke.yml",
+    "artillery:report:quick": "artillery report artillery-output/quick-smoke.json -o artillery-report/quick-smoke.html",
+    "artillery:report:load": "artillery report artillery-output/load-suite.json -o artillery-report/load-suite.html"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
+    "artillery": "^2.0.33",
     "dotenv": "^17.4.2"
   },
   "engines": {

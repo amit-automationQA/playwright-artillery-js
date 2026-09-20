@@ -1,0 +1,14 @@
+config:
+  target: "https://opensource-demo.orangehrmlive.com"
+  phases:
+    - duration: 20
+      arrivalRate: 1
+      rampTo: 2
+  engines:
+    playwright: {}
+  processor: "./dashboard-load.js"
+
+scenarios:
+  - name: TC-DASH-HOME-001 - dashboard load flow
+    engine: playwright
+    testFunction: dashboardLoadFlow

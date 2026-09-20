@@ -1,0 +1,42 @@
+name: Artillery Full Load
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  full-load:
+    name: Full load suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full Artillery load suite
+        run: npm run artillery:load
+
+      - name: Generate full load HTML report
+        run: npm run artillery:report:load
+
+      - name: Upload full load Artillery report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: artillery-full-report
+          path: artillery-report/load-suite.html
+          if-no-files-found: error

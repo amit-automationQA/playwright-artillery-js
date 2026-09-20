@@ -7,6 +7,11 @@ on:
         description: Test case ID from test-requirements (for example, TC-PIM-EMPLIST-004)
         required: true
         type: string
+      create_load_tests:
+        description: Create a matching Artillery load test for this same scenario?
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -86,10 +91,23 @@ jobs:
             Follow every file in .claude/rules/. Use the existing authenticated
             storage state in auth/admin.json when exploring authenticated pages.
 
-            Add or update only the page objects, fixtures, test spec, and coverage
-            tracking required for this test case. Run the targeted test with:
+            Add or update only the page objects, fixtures, test spec, coverage
+            tracking, and optional Artillery load flow required for this test case.
+
+            If the workflow input create_load_tests is true, also create a matching
+            Artillery browser load scenario for the same flow using the same test
+            case intent. Put the scenario under artillery/scenarios/<module>/ and
+            update the relevant Artillery load suite wiring so the scenario is part
+            of the full load run. Keep the load scenario separate from the
+            functional Playwright test and do not modify workflow files.
+
+            Run the targeted test with:
             npx playwright test --grep "${{ inputs.test_case_id }}"
             Then run: npm run coverage
+
+            If create_load_tests is true, also run the relevant Artillery load
+            validation needed to confirm the scenario is wired correctly, such as
+            npm run artillery:load or a focused scenario run if available.
 
             Do not commit, push, create a pull request, modify workflow files, or
             expose credentials. Leave the completed working-tree changes for the
@@ -102,7 +120,14 @@ jobs:
         env:
           TEST_ADMIN_USER: ${{ secrets.TEST_ADMIN_USER }}
           TEST_ADMIN_PASS: ${{ secrets.TEST_ADMIN_PASS }}
-        run: npx playwright test --grep "$TEST_CASE_ID"
+        shell: bash
+        run: |
+          npx playwright test --grep "$TEST_CASE_ID"
+
+          if [[ "${{ inputs.create_load_tests }}" == "true" ]]; then
+            echo "Running Artillery load verification for $TEST_CASE_ID"
+            npm run artillery:load
+          fi
 
       - name: Commit and push implementation
         shell: bash

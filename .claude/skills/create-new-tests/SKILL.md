@@ -8,10 +8,13 @@ description: Use this skill when a test automation engineer provides a module.md
 ## Trigger
 The engineer says something like: "Automate tests from `test-requirements/<module>.md`" or points at a specific module/page/section within it.
 
+Some workflow runs may also include a boolean `create_load_tests` flag requesting an Artillery load scenario for the same test case flow.
+
 ## Inputs
 - `test-requirements/<module>.md` — the engineer-authored list of required test cases per page/section (read-only, never modify).
 - Existing `.claude/rules/*.md` — always reload all of them, they are the contract for output quality.
 - Existing `test-cases/<module>/<page>.md` if present — don't duplicate rows already marked `Automated`.
+- Optional boolean `create_load_tests` — when true, create a matching Artillery browser load scenario for the same feature flow and keep it separate from the Playwright functional spec.
 
 ## Procedure
 
@@ -22,13 +25,19 @@ The engineer says something like: "Automate tests from `test-requirements/<modul
 5. **Check auth requirements.** Per `auth-strategy.md`: does this page's tests need a role with existing storage state, or a new one? Create a new `tests-setup/<role>.setup.js` + `playwright.config.js` project only if genuinely necessary; otherwise reuse what exists. If required credentials aren't available, stop and ask the engineer.
 6. **Write the spec file.** In `tests/<module>/<page>.spec.js`, following `naming-conventions.md` (Test IDs, describe structure) and `assertions-style.md`. One `test()` per test case from the module.md, title prefixed with its Test ID.
 7. **Sanity-check the flow** (optional but preferred). Use MCP to click through the new flow once before finalizing, to catch modals/redirects not mentioned in the module.md.
-8. **Run the tests locally** if the environment allows it (`npx playwright test tests/<module>/<page>.spec.js`) to confirm they pass before declaring them `Automated`.
-9. **Update coverage tracking.** In `test-cases/<module>/<page>.md`, following `coverage-tracking-rules.md`:
+8. **If `create_load_tests` is true, add a matching Artillery scenario**.
+   - Create a scenario file under `artillery/scenarios/<module>/` using the same functional flow as the Playwright spec, keeping it separate from the test runner.
+   - Reuse shared browser logic rather than duplicating app behavior inline, if the project already has a shared helper.
+   - Wire the new scenario into the relevant load profile, such as `artillery/load-suite.js` / `artillery/load-suite.yml`, without changing the Playwright functional suite.
+   - Keep the load-flow names aligned with the same test ID or feature name, e.g. `TC-AUTH-LOGIN-001`.
+9. **Run the tests locally** if the environment allows it (`npx playwright test tests/<module>/<page>.spec.js`) to confirm they pass before declaring them `Automated`.
+10. **If `create_load_tests` is true, run the matching Artillery verification** (for example `npm run artillery:load` or the smallest focused scenario that proves the wiring works) and confirm no failed VUs.
+11. **Update coverage tracking.** In `test-cases/<module>/<page>.md`, following `coverage-tracking-rules.md`:
    - Add rows for any test cases not previously tracked.
    - Flip Status to `Automated` and set `Spec Ref` for every test case just implemented.
    - Do NOT hand-compute the Section coverage / Page Summary numbers.
-10. **Regenerate rollups.** Run `node scripts/update-coverage.js`. This recalculates every Section coverage line, every Page Summary table, and rewrites `test-coverage.md`.
-11. **Report back to the engineer**: which test cases were automated, the new page's coverage %, the module's coverage %, and the new overall coverage % from `test-coverage.md`. Mention anything skipped/blocked and why.
+12. **Regenerate rollups.** Run `node scripts/update-coverage.js`. This recalculates every Section coverage line, every Page Summary table, and rewrites `test-coverage.md`.
+13. **Report back to the engineer**: which test cases were automated, whether a matching Artillery load scenario was created, the new page's coverage %, the module's coverage %, and the new overall coverage % from `test-coverage.md`. Mention anything skipped/blocked and why.
 
 ## Guardrails
 - Never modify `test-requirements/<module>.md`.

@@ -1,0 +1,18 @@
+config:
+  target: "https://opensource-demo.orangehrmlive.com"
+  phases:
+    - duration: 20
+      arrivalRate: 1
+      rampTo: 2
+  engines:
+    playwright: {}
+  processor: "./login-valid.js"
+
+scenarios:
+  - name: TC-AUTH-LOGIN-001 - valid credentials login flow
+    engine: playwright
+    testFunction: loginValidCredentialsFlow
+
+  - name: TC-AUTH-LOGIN-002 - invalid password flow
+    engine: playwright
+    testFunction: invalidPasswordFlow
