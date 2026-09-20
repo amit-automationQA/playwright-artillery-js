@@ -1,26 +1,36 @@
-# Playwright Automation Framework
+# Playwright + Artillery Automation Framework
 
-End-to-end UI test framework for the OrangeHRM demo application, built with Playwright and JavaScript. It uses page objects, reusable fixtures, authenticated storage state, coverage tracking, and GitHub Actions.
+End-to-end UI automation for the OrangeHRM demo application, built with Playwright and JavaScript, plus a separate Artillery performance layer for browser-based load testing.
 
-## What it includes
+This project combines:
 
-- Page Object Model under `src/pages/`
-- Reusable page-object fixtures under `src/fixtures/`
-- One-time admin login setup with Playwright storage state
-- Native Playwright HTML reports, including screenshots, video, and traces for failures
-- Requirement-to-test coverage tracking in Markdown
-- GitHub Actions workflow for tests on pushes, pull requests, and manual runs
-- Project-local `.claude` skills and rules for consistent test authoring
+- Playwright functional UI tests
+- Page Object Model design
+- Authenticated storage-state setup
+- Coverage tracking across requirements and specs
+- GitHub Actions automation for local and CI validation
+- Separate Artillery smoke and full-load profiles for performance testing
+
+## What is included
+
+- Functional page objects in [src/pages](src/pages)
+- Shared fixture injection in [src/fixtures/base.fixture.js](src/fixtures/base.fixture.js)
+- Reusable browser flow helpers in [src/utils/orangehrm-flow.js](src/utils/orangehrm-flow.js)
+- Auth setup in [tests-setup/auth.setup.js](tests-setup/auth.setup.js)
+- Playwright config in [playwright.config.js](playwright.config.js)
+- Requirement-based coverage in [test-requirements](test-requirements) and [test-cases](test-cases)
+- Artillery automation in [artillery](artillery)
+- GitHub Actions workflows in [.github/workflows](.github/workflows)
 
 ## Local setup
 
 ```powershell
 npm install
-npx playwright install chromium
+npx playwright install --with-deps chromium
 Copy-Item .env.example .env
 ```
 
-Add your local credentials to `.env`:
+Add your login values to the local `.env` file:
 
 ```env
 BASE_URL=https://opensource-demo.orangehrmlive.com
@@ -28,125 +38,229 @@ TEST_ADMIN_USER=your-user
 TEST_ADMIN_PASS=your-password
 ```
 
-`.env` is ignored by Git. The Playwright configuration loads it automatically with `dotenv`.
+The project uses `dotenv` and the same values can be supplied in GitHub Actions as repository secrets.
 
-## Run tests
+## Run the project
+
+### Functional Playwright tests
 
 ```powershell
-npm test                 # complete headless suite
-npm run test:headed      # visible browser
-npm run test:ui          # Playwright UI Mode
-npm run test:auth-setup  # refresh only the admin storage state
-npm run report           # open the latest local HTML report
-npm run coverage         # regenerate all coverage rollups
-npm run artillery:load   # run the Artillery Playwright load profile
-npm run artillery:quick  # smaller smoke-style Artillery run
+npm test
+npm run test:headed
+npm run test:ui
+npm run test:auth-setup
+npm run report
+npm run coverage
 ```
 
-The `setup` project authenticates once and writes `auth/admin.json`. Authenticated specs reuse that state; login-flow tests explicitly use an empty state instead.
-
-## Artillery quick vs full load
-
-Artillery is kept as a separate performance layer from the Playwright functional suite. The project now uses separate YAML profiles so you can run a quick smoke check or a full load profile independently:
-
-- `artillery/quick-smoke.yml` — lightweight smoke run for quick validation
-- `artillery/load-suite.yml` — full multi-scenario load profile
-- `artillery/quick-smoke.js` — smoke flow processor
-- `artillery/load-suite.js` — full-suite scenario aggregator
-
-Recommended usage:
+### Artillery performance tests
 
 ```powershell
 npm run artillery:quick
 npm run artillery:load
+npm run artillery:report:quick
+npm run artillery:report:load
 ```
 
-The associated GitHub Actions workflows are split the same way:
+## Project structure
 
-- `.github/workflows/artillery-quick.yml` — runs the quick smoke profile
-- `.github/workflows/artillery-full.yml` — runs the full load suite
+```text
+.github/
+  workflows/
+    artillery-quick.yml           # quick smoke workflow
+    artillery-full.yml            # full load workflow
+    artillery-load.yml            # legacy combined load workflow
+    automate-test-case.yml        # AI-driven test automation workflow
+    playwright.yml                # functional Playwright workflow
 
-This keeps the CI signal clear: the quick smoke job fails fast for regressions, while the full suite is used for deeper load validation.
+.claude/
+  rules/                         # project rules and standards
+  skills/
+    create-new-tests/SKILL.md    # skill used by automated test generation
 
-## Test execution flow
+artillery/
+  quick-smoke.yml                # lightweight smoke profile
+  quick-smoke.js                 # smoke flow processor
+  load-suite.yml                 # full suite profile
+  load-suite.js                  # full-suite scenario aggregator
+  package.json                   # local CommonJS compatibility shim
+  scenarios/
+    auth/login-valid.js
+    auth/login-valid.yml
+    dashboard/dashboard-load.js
+    dashboard/dashboard-load.yml
+    pim/employee-list.js
+    pim/employee-list.yml
 
-```mermaid
-flowchart TD
-    A["Run tests<br/>npm test locally<br/>or GitHub Actions"] --> B["Load configuration"]
-    B --> C["Read credentials<br/>.env locally / GitHub Secrets in CI"]
-    C --> D["Login setup runs once"]
-    D --> E["Run all test files"]
+src/
+  fixtures/base.fixture.js       # Playwright fixture injection
+  pages/
+    auth/login.page.js
+    dashboard/dashboard.page.js
+    pim/pim.page.js
+    base.page.js
+  utils/
+    orangehrm-flow.js            # shared browser flows used by Playwright and Artillery
 
-    E --> F{"Test passed?"}
-    F -->|Yes| G["Mark as passed"]
-    F -->|No| H{"Already retried?"}
+tests-setup/
+  auth.setup.js                 # admin login setup and storage state generation
 
-    H -->|No| I["Retry failed test once"]
-    I --> F
-    H -->|Yes| J["Mark as failed<br/>capture screenshot, video, trace"]
+auth/
+  admin.json                    # generated storage state (not committed in CI copies)
 
-    G --> K["Create HTML report"]
-    J --> K
-    K --> L["Local: npm run report<br/>CI: download artifact"]
+tests/
+  auth/login.spec.js
+  dashboard/dashboard.spec.js
+  pim/pim.spec.js
+
+test-requirements/
+  auth.md
+  dashboard.md
+  pim.md
+  test-coverage.md             # generated copy of the master coverage summary
+
+test-cases/
+  auth/login.md
+  dashboard/dashboard.md
+  pim/pim.md
+
+test-coverage.md              # generated master coverage rollup
+scripts/
+  update-coverage.js
+
+playwright.config.js
+package.json
+README.md
+.gitignore
+.env.example
 ```
 
-A test that passes on its retry is marked as **flaky** in the Playwright report.
+## Functional test execution flow
+
+The Playwright suite runs against the OrangeHRM demo app and uses storage-state authentication to avoid repeated login steps in normal specs.
+
+```text
+Run Playwright tests
+  ↓
+Load config and environment
+  ↓
+Read credentials from .env or GitHub secrets
+  ↓
+Login setup runs once
+  ↓
+Run all functional specs
+  ↓
+Test passed?
+  ├─ No → Retry failed test once
+  │        ├─ Already retried? → Mark as failed
+  │        └─ No → Retry and continue
+  └─ Yes → Mark as passed
+  ↓
+Generate Playwright HTML report
+  ↓
+Upload report artifact
+```
+
+- The setup project in [tests-setup/auth.setup.js](tests-setup/auth.setup.js) logs in once as the admin user.
+- Storage state is written to [auth/admin.json](auth/admin.json).
+- Most authenticated specs reuse that saved state.
+- Login-flow tests explicitly disable the default state so they can validate the login behavior itself.
+
+## Load test execution flow
+
+Artillery is intentionally kept separate from the Playwright suite so browser load testing does not interfere with the functional automation lifecycle.
+
+```text
+Run Artillery profile
+  ↓
+Load the selected YAML config and phases
+  ↓
+Read target URL and environment values
+  ↓
+Execute browser-based scenario flow
+  ↓
+Capture latency, throughput, and status metrics
+  ↓
+Write JSON result file
+  ↓
+Generate HTML summary report
+  ↓
+Upload performance artifact
+```
+
+- Quick smoke runs use a short validation profile for fast feedback.
+- Full load runs execute the multi-scenario suite for deeper performance validation.
+- Reporting is kept in a separate output/report flow from the Playwright HTML report.
 
 ## Coverage workflow
 
-1. Add test requirements to `test-requirements/<module>.md`.
-2. Implement matching page objects and specs.
-3. Set the implemented test case to `Automated` in `test-cases/<module>/<page>.md`.
+1. Update the module requirements in [test-requirements](test-requirements).
+2. Implement the matching page objects and tests.
+3. Create or update the relevant tracking file in [test-cases](test-cases).
 4. Run `npm run coverage`.
+5. Regenerate the master summary in [test-coverage.md](test-coverage.md).
 
-The coverage script regenerates these two identical master rollups:
+Do not edit computed coverage values manually.
 
-- `test-coverage.md`
-- `test-requirements/test-coverage.md`
+## Artillery workflow
 
-Do not edit calculated coverage totals manually.
+Artillery is intentionally separate from the Playwright test runner. The project keeps the load-testing layer independent so performance runs do not interfere with the functional suite lifecycle.
 
-## GitHub Actions and secrets
+### Quick smoke profile
 
-The workflow at `.github/workflows/playwright.yml` runs on pushes and pull requests to `main`, and can also be started manually from the GitHub **Actions** tab.
+Purpose: a short, lightweight validation run.
 
-Add these repository secrets in **Settings → Secrets and variables → Actions**:
+```powershell
+npm run artillery:quick
+```
+
+### Full load profile
+
+Purpose: multi-scenario browser load simulation for the same core flows.
+
+```powershell
+npm run artillery:load
+```
+
+### HTML reporting
+
+Artillery can emit JSON and then generate a browser-friendly HTML summary:
+
+```powershell
+npm run artillery:report:quick
+npm run artillery:report:load
+```
+
+This is useful for sharing a compact summary in CI artifacts or leadership discussions.
+
+## GitHub Actions
+
+The repo contains separate CI workflows for functional and load testing.
+
+### Functional CI
+
+- [.github/workflows/playwright.yml](.github/workflows/playwright.yml) runs the standard Playwright suite.
+
+### Artillery CI
+
+- [.github/workflows/artillery-quick.yml](.github/workflows/artillery-quick.yml) runs the smoke profile
+- [.github/workflows/artillery-full.yml](.github/workflows/artillery-full.yml) runs the full suite
+- [.github/workflows/artillery-load.yml](.github/workflows/artillery-load.yml) is kept as a combined/legacy variant
+
+### AI automation workflow
+
+- [.github/workflows/automate-test-case.yml](.github/workflows/automate-test-case.yml) is a manual workflow that can generate a Playwright test for a requested requirement.
+- It includes a boolean input called `create_load_tests`.
+- When set to `true`, the workflow also creates and verifies a matching Artillery load scenario for the same flow.
+
+Required secrets:
 
 - `TEST_ADMIN_USER`
 - `TEST_ADMIN_PASS`
+- `ANTHROPIC_API_KEY` for the Claude automation workflow
 
-Optionally add the repository variable `BASE_URL` for a different target environment. The workflow uploads the Playwright HTML report as an artifact after every non-cancelled run. Download and extract it, then open `index.html` to view the interactive report.
+## Notes
 
-### AI test automation workflow
-
-`.github/workflows/automate-test-case.yml` is a manual workflow template for automating one requirement at a time. After adding the `ANTHROPIC_API_KEY` repository secret, run **Automate Test Case** from the GitHub **Actions** tab and enter a test ID such as `TC-PIM-EMPLIST-004`.
-
-The workflow also includes a boolean input named `create_load_tests`. If you set it to `true`, the same automation flow will create a matching Artillery load scenario for the same feature and verify the generated load wiring as part of the run. If it is left as `false`, only the Playwright functional automation is generated and verified.
-
-The workflow validates the ID in `test-requirements/`, creates `feature/<test-case-id>` from `main`, instructs Claude Code to follow the project `create-new-tests` skill, runs the targeted test, and optionally validates the Artillery load wiring before committing the generated allowed files and opening a pull request to `main`. It needs `TEST_ADMIN_USER` and `TEST_ADMIN_PASS` secrets as well.
-
-## Project layout
-
-```text
-.github/workflows/playwright.yml  GitHub Actions workflow
-.claude/                          Test-authoring skills and framework rules
-src/pages/                        Page objects
-src/fixtures/                     Shared Playwright fixtures
-tests-setup/                      Authentication setup project
-tests/                            Playwright specifications
-test-requirements/                Test requirements and a generated coverage copy
-test-cases/                       Per-page coverage tracking
-scripts/update-coverage.js        Coverage generator
-```
-
-## Artillery load testing
-
-Artillery is added as a separate performance layer in the `artillery/` folder and does not alter the Playwright functional suite. The project intentionally keeps performance profiles separate from functional test specs so the browser-based load runner and the Playwright test runner do not share the same lifecycle or assumptions.
-
-The current setup includes:
-
-- `artillery/quick-smoke.yml` for a light smoke validation run
-- `artillery/load-suite.yml` for the full multi-scenario load run
-- dedicated GitHub Actions workflows for each profile
-
-Artillery outputs its own metrics separately from the Playwright HTML report. Keep load-test profiles and result artifacts isolated from the functional-test workflow.
+- All functional reporting is done with Playwright’s native HTML reporter only.
+- Artillery output is kept separate and generated to the [artillery](artillery) output/report folders.
+- The project intentionally separates functional validation from load validation so each layer can scale independently.
